@@ -1,6 +1,9 @@
 // Copyright (c) 2019 Cloudflare, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+// Post quantum updates by CyberHive
+// Note: Mentions of "algo 1" refer to the PQ WireGuard paper by Hulsing et al, section II - C.
+
 use super::{HandshakeInit, HandshakeResponse, PacketCookieReply};
 use crate::crypto::blake2s::Blake2s;
 use crate::crypto::chacha20poly1305::ChaCha20Poly1305;
@@ -530,7 +533,7 @@ impl Handshake {
         Ok(())
     }
 
-    // Compute and append mac1 and mac2 to a handshake message
+    // *Compute and* append mac1 and mac2 to a handshake message
     fn append_mac1_and_mac2<'a>(
         &mut self,
         local_index: u32,
@@ -538,7 +541,7 @@ impl Handshake {
     ) -> Result<&'a mut [u8], WireGuardError> {
         let mac1_off = dst.len() - 32;
         let mac2_off = dst.len() - 16;
-
+        // "Algorithm 1" rule 6 (as per pq_wireguard paper section II - C. )
         // msg.mac1 = MAC(HASH(LABEL_MAC1 || responder.static_public), msg[0:offsetof(msg.mac1)])
         let msg_mac1: [u8; 16] = make_array(
             &Blake2s::new_mac(&self.params.sending_mac1_key)
@@ -546,8 +549,10 @@ impl Handshake {
                 .finalize()[..],
         );
 
+        // "Algorithm 1" rule 8 ( "|| m1" )
         dst[mac1_off..mac2_off].copy_from_slice(&msg_mac1[..]);
 
+        // "Algorithm 1" rule 7
         //msg.mac2 = MAC(initiator.last_received_cookie, msg[0:offsetof(msg.mac2)])
         let msg_mac2: [u8; 16] = if let Some(cookie) = self.cookies.write_cookie {
             make_array(&Blake2s::new_mac(&cookie).hash(&dst[..mac2_off]).finalize()[..])
@@ -555,6 +560,7 @@ impl Handshake {
             [0u8; 16]
         };
 
+        // "Algorithm 1" rule 8 ( "|| m2" )
         dst[mac2_off..].copy_from_slice(&msg_mac2[..]);
 
         self.cookies.index = local_index;
@@ -570,7 +576,8 @@ impl Handshake {
             return Err(WireGuardError::DestinationBufferTooSmall);
         }
 
-        let (message_type, rest) = dst.split_at_mut(4);
+        // message format descrived at wireguard.com/papers/wireguard.pdf section 5.4.2
+        let (message_type, rest) = dst.split_at_mut(4);  // really 1 + 3
         let (sender_index, rest) = rest.split_at_mut(4);
         let (unencrypted_ephemeral, rest) = rest.split_at_mut(32);
         let (mut encrypted_static, rest) = rest.split_at_mut(32 + 16);
@@ -585,15 +592,20 @@ impl Handshake {
         hash = HASH!(hash, self.params.peer_static_public.as_bytes());
         // initiator.ephemeral_private = DH_GENERATE()
         let ephemeral_private = X25519SecretKey::new();
-        // msg.message_type = 1
-        // msg.reserved_zero = { 0, 0, 0 }
-        message_type.copy_from_slice(&super::HANDSHAKE_INIT.to_le_bytes());
+
+
+
+        // msg.message_type = 1   // algo 1 rule 8, "type"
+        // msg.reserved_zero = { 0, 0, 0 }  // algo 1 rule 8, "0^3"
+        message_type.copy_from_slice(&super::HANDSHAKE_INIT.to_le_bytes()); // little endian
+
         // msg.sender_index = little_endian(initiator.sender_index)
         sender_index.copy_from_slice(&local_index.to_le_bytes());
+
         //msg.unencrypted_ephemeral = DH_PUBKEY(initiator.ephemeral_private)
         unencrypted_ephemeral.copy_from_slice(&ephemeral_private.public_key().as_bytes());
         // initiator.hash = HASH(initiator.hash || msg.unencrypted_ephemeral)
-        hash = HASH!(hash, unencrypted_ephemeral);
+        hash = HASH!(hash, unencrypted_ephemeral);  // this hash corresponds to H3 in algo 1
         // temp = HMAC(initiator.chaining_key, msg.unencrypted_ephemeral)
         // initiator.chaining_key = HMAC(temp, 0x1)
         chaining_key = HMAC!(HMAC!(chaining_key, unencrypted_ephemeral), [0x01]);
@@ -604,9 +616,11 @@ impl Handshake {
         chaining_key = HMAC!(temp, [0x01]);
         // key = HMAC(temp, initiator.chaining_key || 0x2)
         let key = HMAC!(temp, chaining_key, [0x02]);
+
+        // This corresponds top algo 1 rule 3:
         // msg.encrypted_static = AEAD(key, 0, initiator.static_public, initiator.hash)
         SEAL!(
-            encrypted_static,
+            encrypted_static, // = algo 1 "ltk", "long term key"
             key,
             0,
             self.params.static_public.as_bytes(),
