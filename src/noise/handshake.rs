@@ -541,7 +541,7 @@ impl Handshake {
     ) -> Result<&'a mut [u8], WireGuardError> {
         let mac1_off = dst.len() - 32;
         let mac2_off = dst.len() - 16;
-        // "Algorithm 1" rule 6 (as per pq_wireguard paper section II - C. )
+        // algo 1 rule 6
         // msg.mac1 = MAC(HASH(LABEL_MAC1 || responder.static_public), msg[0:offsetof(msg.mac1)])
         let msg_mac1: [u8; 16] = make_array(
             &Blake2s::new_mac(&self.params.sending_mac1_key)
@@ -549,10 +549,10 @@ impl Handshake {
                 .finalize()[..],
         );
 
-        // "Algorithm 1" rule 8 ( "|| m1" )
+        // algo 1 rule 8 ( "|| m1" )
         dst[mac1_off..mac2_off].copy_from_slice(&msg_mac1[..]);
 
-        // "Algorithm 1" rule 7
+        // algo 1 rule 7
         //msg.mac2 = MAC(initiator.last_received_cookie, msg[0:offsetof(msg.mac2)])
         let msg_mac2: [u8; 16] = if let Some(cookie) = self.cookies.write_cookie {
             make_array(&Blake2s::new_mac(&cookie).hash(&dst[..mac2_off]).finalize()[..])
@@ -560,7 +560,7 @@ impl Handshake {
             [0u8; 16]
         };
 
-        // "Algorithm 1" rule 8 ( "|| m2" )
+        // algo 1 rule 8 ("|| m2")
         dst[mac2_off..].copy_from_slice(&msg_mac2[..]);
 
         self.cookies.index = local_index;
