@@ -5,6 +5,9 @@
 // Note: Mentions of "algo 1" refer to the PQ WireGuard paper by Hulsing et al, section II - C.
 
 use super::{HandshakeInit, HandshakeResponse, PacketCookieReply};
+
+use pqcrypto_saber::saber;
+
 use crate::crypto::blake2s::Blake2s;
 use crate::crypto::chacha20poly1305::ChaCha20Poly1305;
 use crate::crypto::x25519::{X25519PublicKey, X25519SecretKey};
@@ -590,10 +593,10 @@ impl Handshake {
         // initiator.hash = HASH(HASH(initiator.chaining_key || IDENTIFIER) || responder.static_public)
         let mut hash = INITIAL_CHAIN_HASH;
         hash = HASH!(hash, self.params.peer_static_public.as_bytes());
+
         // initiator.ephemeral_private = DH_GENERATE()
-        let ephemeral_private = X25519SecretKey::new();
-
-
+        // ALG1: let ephemeral_private = X25519SecretKey::new();
+        let (ephemeral_shared, ephemeral_private) = saber::keypair();
 
         // msg.message_type = 1   // algo 1 rule 8, "type"
         // msg.reserved_zero = { 0, 0, 0 }  // algo 1 rule 8, "0^3"
@@ -610,7 +613,9 @@ impl Handshake {
         // initiator.chaining_key = HMAC(temp, 0x1)
         chaining_key = HMAC!(HMAC!(chaining_key, unencrypted_ephemeral), [0x01]);
         // temp = HMAC(initiator.chaining_key, DH(initiator.ephemeral_private, responder.static_public))
-        let ephemeral_shared = ephemeral_private.shared_key(&self.params.peer_static_public)?;
+
+        // let ephemeral_shared = ephemeral_private.shared_key(&self.params.peer_static_public)?;
+
         let temp = HMAC!(chaining_key, ephemeral_shared);
         // initiator.chaining_key = HMAC(temp, 0x1)
         chaining_key = HMAC!(temp, [0x01]);
