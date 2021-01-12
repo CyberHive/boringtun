@@ -78,8 +78,9 @@ const HANDSHAKE_RESP: MessageType = 2;
 const COOKIE_REPLY: MessageType = 3;
 const DATA: MessageType = 4;
 
-const HANDSHAKE_INIT_SZ: usize = 148;
-const HANDSHAKE_RESP_SZ: usize = 92;
+const CIPHER_LEN = 32;
+const HANDSHAKE_INIT_SZ: usize = 148 + CIPHER_LEN;
+const HANDSHAKE_RESP_SZ: usize = 92 + CIPHER_LEN + CIPHER_LEN;
 const COOKIE_REPLY_SZ: usize = 64;
 const DATA_OVERHEAD_SZ: usize = 32;
 
@@ -87,6 +88,7 @@ const DATA_OVERHEAD_SZ: usize = 32;
 pub struct HandshakeInit<'a> {
     sender_idx: u32,
     unencrypted_ephemeral: &'a [u8],
+    cipher_cca: &'a [u8], // corresponds to ct1 in algo 2
     encrypted_static: &'a [u8],
     encrypted_timestamp: &'a [u8],
 }
@@ -95,7 +97,8 @@ pub struct HandshakeInit<'a> {
 pub struct HandshakeResponse<'a> {
     sender_idx: u32,
     pub receiver_idx: u32,
-    unencrypted_ephemeral: &'a [u8],
+    cipher_cpa: &'a [u8],  // corresponds to ct2 in algo 2
+    cipher_cca: &'a [u8],  // corresponds to ct3 in algo 2
     encrypted_nothing: &'a [u8],
 }
 
