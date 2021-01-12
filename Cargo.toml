@@ -17,6 +17,7 @@ parking_lot = "0.10"
 slog = "2.5"
 slog-term = "2.5"
 pqcrypto-classicmceliece = "0.1.1"
+pqcrypto-saber = "0.1.5"
 
 [target.'cfg(not(target_arch="arm"))'.dependencies]
 ring = "0.16"
