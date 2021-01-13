@@ -19,6 +19,11 @@ use std::time::{Duration, Instant, SystemTime};
 use ring::rand::*;
 use pqcrypto_traits::kem::PublicKey;
 
+enum SecretKeyType {
+    X25519(X25519SecretKey),
+    Saber(saber::SecretKey),
+}
+
 // static CONSTRUCTION: &'static [u8] = b"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
 // static IDENTIFIER: &'static [u8] = b"WireGuard v1 zx2c4 Jason@zx2c4.com";
 pub static LABEL_MAC1: &[u8] = b"mac1----";
@@ -152,7 +157,7 @@ struct HandshakeInitSentState {
     local_index: u32,
     hash: [u8; KEY_LEN],
     chaining_key: [u8; KEY_LEN],
-    ephemeral_private: X25519SecretKey,
+    ephemeral_private: SecretKeyType,
     time_sent: Instant,
 }
 
