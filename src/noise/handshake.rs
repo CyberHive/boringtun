@@ -19,10 +19,32 @@ use std::time::{Duration, Instant, SystemTime};
 use ring::rand::*;
 use pqcrypto_traits::kem::PublicKey;
 
+struct SaberSecretKey {
+    shared: saber::PublicKey,
+    private: saber::SecretKey
+}
+use core::fmt::Display;
+use core::fmt::Formatter;
+
+impl Display for SaberSecretKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        Display::fmt("SaberSecretKey {}", f)
+    }
+}
+
+impl std::fmt::Debug for SaberSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+
+}
+
+#[derive(Debug)]
 enum SecretKeyType {
     X25519(X25519SecretKey),
-    Saber(saber::SecretKey),
+    Saber(SaberSecretKey),
 }
+
 
 // static CONSTRUCTION: &'static [u8] = b"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
 // static IDENTIFIER: &'static [u8] = b"WireGuard v1 zx2c4 Jason@zx2c4.com";
@@ -649,7 +671,7 @@ impl Handshake {
                 local_index,
                 chaining_key,
                 hash,
-                ephemeral_private,
+                ephemeral_private: SecretKeyType::X25519(ephemeral_private),
                 time_sent: time_now,
             }),
         );
@@ -743,7 +765,7 @@ impl Handshake {
                 local_index,
                 chaining_key,
                 hash,
-                ephemeral_private,
+                ephemeral_private: SecretKeyType::Saber(SaberSecretKey {shared: ephemeral_shared, private: ephemeral_private}),
                 time_sent: time_now,
             }),
         );
