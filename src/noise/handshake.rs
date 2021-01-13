@@ -634,7 +634,10 @@ impl Handshake {
         let mut hash = INITIAL_CHAIN_HASH;
         hash = HASH!(hash, self.params.peer_static_public.as_bytes());
         // initiator.ephemeral_private = DH_GENERATE()
+        // algo 1 rule 1: (eski,epki) <- DH.Gen()  (note: public counterpart derived later)
+        // algo 2 rule 1: (eski,epki) <- CPAKEM.Gen()  (saber keypair)
         let ephemeral_private = X25519SecretKey::new();
+
         // msg.message_type = 1
         // msg.reserved_zero = { 0, 0, 0 }
         message_type.copy_from_slice(&super::HANDSHAKE_INIT.to_le_bytes());
@@ -720,7 +723,8 @@ impl Handshake {
         hash = HASH!(hash, self.params.peer_static_public.as_bytes());
 
         // initiator.ephemeral_private = DH_GENERATE()
-        // ALG1: let ephemeral_private = X25519SecretKey::new();
+        // algo 1 rule 1: (eski,epki) <- DH.Gen()  (note: public counterpart derived later)
+        // algo 2 rule 1: (eski,epki) <- CPAKEM.Gen()  (saber keypair)
         let (ephemeral_shared, ephemeral_private) = saber::keypair();
 
         // msg.message_type = 1   // algo 1 rule 8, "type"
