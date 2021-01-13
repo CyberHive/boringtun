@@ -41,7 +41,7 @@ impl std::fmt::Debug for SaberSecretKey {
 impl SaberSecretKey {
     fn shared_key(&self, peer_public: &X25519PublicKey) -> Result<[u8; 32], WireGuardError> {
         // TODO
-        return Err(WireGuardError::IncorrectPacketLength);
+        return Err(WireGuardError::PQImplementationIncomplete);
     }
 }
 #[derive(Debug)]
