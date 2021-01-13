@@ -81,9 +81,12 @@ const DATA: MessageType = 4;
 
 const HANDSHAKE_INIT_SZ: usize = 148;
 const HANDSHAKE_RESP_SZ: usize = 92;
-const CIPHER_SZ: usize = 32;
-const PQHANDSHAKE_INIT_SZ: usize = 148 + CIPHER_SZ;
-const PQHANDSHAKE_RESP_SZ: usize = 92 + CIPHER_SZ + CIPHER_SZ;
+
+// not sure cipher is fixed (or known) length at this point
+//const CIPHER_SZ: usize = 32;
+const PQHANDSHAKE_INIT_SZ: usize = 148; // + CIPHER_SZ;
+const PQHANDSHAKE_RESP_SZ: usize = 92; // + CIPHER_SZ + CIPHER_SZ;
+
 const COOKIE_REPLY_SZ: usize = 64;
 const DATA_OVERHEAD_SZ: usize = 32;
 

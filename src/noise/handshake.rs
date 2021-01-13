@@ -16,6 +16,8 @@ use crate::noise::make_array;
 use crate::noise::session::Session;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
+use ring::rand::*;
+use pqcrypto_traits::kem::PublicKey;
 
 // static CONSTRUCTION: &'static [u8] = b"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
 // static IDENTIFIER: &'static [u8] = b"WireGuard v1 zx2c4 Jason@zx2c4.com";
@@ -579,6 +581,85 @@ impl Handshake {
             return Err(WireGuardError::DestinationBufferTooSmall);
         }
 
+        let (message_type, rest) = dst.split_at_mut(4);
+        let (sender_index, rest) = rest.split_at_mut(4);
+        let (unencrypted_ephemeral, rest) = rest.split_at_mut(32);
+        let (mut encrypted_static, rest) = rest.split_at_mut(32 + 16);
+        let (mut encrypted_timestamp, _) = rest.split_at_mut(12 + 16);
+
+        let local_index = self.inc_index();
+
+        // initiator.chaining_key = HASH(CONSTRUCTION)
+        let mut chaining_key = INITIAL_CHAIN_KEY;
+        // initiator.hash = HASH(HASH(initiator.chaining_key || IDENTIFIER) || responder.static_public)
+        let mut hash = INITIAL_CHAIN_HASH;
+        hash = HASH!(hash, self.params.peer_static_public.as_bytes());
+        // initiator.ephemeral_private = DH_GENERATE()
+        let ephemeral_private = X25519SecretKey::new();
+        // msg.message_type = 1
+        // msg.reserved_zero = { 0, 0, 0 }
+        message_type.copy_from_slice(&super::HANDSHAKE_INIT.to_le_bytes());
+        // msg.sender_index = little_endian(initiator.sender_index)
+        sender_index.copy_from_slice(&local_index.to_le_bytes());
+        //msg.unencrypted_ephemeral = DH_PUBKEY(initiator.ephemeral_private)
+        unencrypted_ephemeral.copy_from_slice(&ephemeral_private.public_key().as_bytes());
+        // initiator.hash = HASH(initiator.hash || msg.unencrypted_ephemeral)
+        hash = HASH!(hash, unencrypted_ephemeral);
+        // temp = HMAC(initiator.chaining_key, msg.unencrypted_ephemeral)
+        // initiator.chaining_key = HMAC(temp, 0x1)
+        chaining_key = HMAC!(HMAC!(chaining_key, unencrypted_ephemeral), [0x01]);
+        // temp = HMAC(initiator.chaining_key, DH(initiator.ephemeral_private, responder.static_public))
+        let ephemeral_shared = ephemeral_private.shared_key(&self.params.peer_static_public)?;
+        let temp = HMAC!(chaining_key, ephemeral_shared);
+        // initiator.chaining_key = HMAC(temp, 0x1)
+        chaining_key = HMAC!(temp, [0x01]);
+        // key = HMAC(temp, initiator.chaining_key || 0x2)
+        let key = HMAC!(temp, chaining_key, [0x02]);
+        // msg.encrypted_static = AEAD(key, 0, initiator.static_public, initiator.hash)
+        SEAL!(
+            encrypted_static,
+            key,
+            0,
+            self.params.static_public.as_bytes(),
+            hash
+        );
+        // initiator.hash = HASH(initiator.hash || msg.encrypted_static)
+        hash = HASH!(hash, encrypted_static);
+        // temp = HMAC(initiator.chaining_key, DH(initiator.static_private, responder.static_public))
+        let temp = HMAC!(chaining_key, self.params.static_shared);
+        // initiator.chaining_key = HMAC(temp, 0x1)
+        chaining_key = HMAC!(temp, [0x01]);
+        // key = HMAC(temp, initiator.chaining_key || 0x2)
+        let key = HMAC!(temp, chaining_key, [0x02]);
+        // msg.encrypted_timestamp = AEAD(key, 0, TAI64N(), initiator.hash)
+        let timestamp = self.stamper.stamp();
+        SEAL!(encrypted_timestamp, key, 0, timestamp, hash);
+        // initiator.hash = HASH(initiator.hash || msg.encrypted_timestamp)
+        hash = HASH!(hash, encrypted_timestamp);
+
+        let time_now = Instant::now();
+        self.previous = std::mem::replace(
+            &mut self.state,
+            HandshakeState::InitSent(HandshakeInitSentState {
+                local_index,
+                chaining_key,
+                hash,
+                ephemeral_private,
+                time_sent: time_now,
+            }),
+        );
+
+        self.append_mac1_and_mac2(local_index, &mut dst[..super::HANDSHAKE_INIT_SZ])
+    }
+
+    pub(super) fn format_pq_handshake_initiation<'a>(
+        &mut self,
+        dst: &'a mut [u8],
+    ) -> Result<&'a mut [u8], WireGuardError> {
+        if dst.len() < super::HANDSHAKE_INIT_SZ {
+            return Err(WireGuardError::DestinationBufferTooSmall);
+        }
+
         // message format descrived at wireguard.com/papers/wireguard.pdf section 5.4.2
         let (message_type, rest) = dst.split_at_mut(4);  // really 1 + 3
         let (sender_index, rest) = rest.split_at_mut(4);
@@ -587,6 +668,11 @@ impl Handshake {
         let (mut encrypted_timestamp, _) = rest.split_at_mut(12 + 16);
 
         let local_index = self.inc_index();
+
+        // algo 2 rule 3: r[i] <- {0,1}^lambda
+        let rng = SystemRandom::new();
+        let mut ri = [0u8; 32];  // 32 bytes = 256 bits
+        rng.fill(&mut ri[..]).unwrap();
 
         // initiator.chaining_key = HASH(CONSTRUCTION)
         let mut chaining_key = INITIAL_CHAIN_KEY;
@@ -606,7 +692,7 @@ impl Handshake {
         sender_index.copy_from_slice(&local_index.to_le_bytes());
 
         //msg.unencrypted_ephemeral = DH_PUBKEY(initiator.ephemeral_private)
-        unencrypted_ephemeral.copy_from_slice(&ephemeral_private.public_key().as_bytes());
+        unencrypted_ephemeral.copy_from_slice(&ephemeral_shared.as_bytes());
         // initiator.hash = HASH(initiator.hash || msg.unencrypted_ephemeral)
         hash = HASH!(hash, unencrypted_ephemeral);  // this hash corresponds to H3 in algo 1
         // temp = HMAC(initiator.chaining_key, msg.unencrypted_ephemeral)
@@ -616,7 +702,7 @@ impl Handshake {
 
         // let ephemeral_shared = ephemeral_private.shared_key(&self.params.peer_static_public)?;
 
-        let temp = HMAC!(chaining_key, ephemeral_shared);
+        let temp = HMAC!(chaining_key, ephemeral_shared.as_bytes());
         // initiator.chaining_key = HMAC(temp, 0x1)
         chaining_key = HMAC!(temp, [0x01]);
         // key = HMAC(temp, initiator.chaining_key || 0x2)
