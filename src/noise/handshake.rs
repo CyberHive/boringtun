@@ -38,14 +38,26 @@ impl std::fmt::Debug for SaberSecretKey {
     }
 
 }
-
+impl SaberSecretKey {
+    fn shared_key(&self, peer_public: &X25519PublicKey) -> Result<[u8; 32], WireGuardError> {
+        // TODO
+        return Err(WireGuardError::IncorrectPacketLength);
+    }
+}
 #[derive(Debug)]
 enum SecretKeyType {
     X25519(X25519SecretKey),
     Saber(SaberSecretKey),
 }
 
-
+impl SecretKeyType {
+    pub fn shared_key(&self, peer_public: &X25519PublicKey) -> Result<[u8; 32], WireGuardError> {
+        match self {
+            SecretKeyType::X25519(secretkey) => { return secretkey.shared_key(peer_public); }
+            SecretKeyType::Saber(secretkey) => { return secretkey.shared_key(peer_public); }
+        }
+    }
+}
 // static CONSTRUCTION: &'static [u8] = b"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
 // static IDENTIFIER: &'static [u8] = b"WireGuard v1 zx2c4 Jason@zx2c4.com";
 pub static LABEL_MAC1: &[u8] = b"mac1----";
