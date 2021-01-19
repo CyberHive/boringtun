@@ -25,6 +25,7 @@ struct SaberSecretKey {
 }
 use core::fmt::Display;
 use core::fmt::Formatter;
+// use pqcrypto_classicmceliece::mceliece8192128f::*;
 
 impl Display for SaberSecretKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -726,6 +727,20 @@ impl Handshake {
         // algo 1 rule 1: (eski,epki) <- DH.Gen()  (note: public counterpart derived later)
         // algo 2 rule 1: (eski,epki) <- CPAKEM.Gen()  (saber keypair)
         let (ephemeral_shared, ephemeral_private) = saber::keypair();
+
+/*
+
+
+
+
+let (pk, sk) = keypair();
+let (ss1, ct) = encapsulate(&pk);
+let ss2 = decapsulate(&ct, &sk);
+assert!(ss1 == ss2);
+
+
+
+*/
 
         // msg.message_type = 1   // algo 1 rule 8, "type"
         // msg.reserved_zero = { 0, 0, 0 }  // algo 1 rule 8, "0^3"
