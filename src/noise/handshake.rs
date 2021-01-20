@@ -703,9 +703,18 @@ impl Handshake {
             return Err(WireGuardError::DestinationBufferTooSmall);
         }
 
+
+        // initiator.ephemeral_private = DH_GENERATE()
+        // algo 1 rule 1: (eski,epki) <- DH.Gen()  (note: public counterpart derived later)
+        // algo 2 rule 1: (eski,epki) <- CPAKEM.Gen()  (saber keypair)
+        let (ephemeral_shared, ephemeral_private) = saber::keypair();
+
         // message format descrived at wireguard.com/papers/wireguard.pdf section 5.4.2
         let (message_type, rest) = dst.split_at_mut(4);  // really 1 + 3
+
+        // algo 1 rule 2, algo 2 rule 2
         let (sender_index, rest) = rest.split_at_mut(4);
+
         let (unencrypted_ephemeral, rest) = rest.split_at_mut(32);
         let (mut encrypted_static, rest) = rest.split_at_mut(32 + 16);
         let (mut encrypted_timestamp, _) = rest.split_at_mut(12 + 16);
@@ -714,8 +723,8 @@ impl Handshake {
 
         // algo 2 rule 3: r[i] <- {0,1}^lambda
         let rng = SystemRandom::new();
-        let mut ri = [0u8; 32];  // 32 bytes = 256 bits
-        rng.fill(&mut ri[..]).unwrap();
+        let mut r_i = [0u8; 32];  // 32 bytes = 256 bits
+        rng.fill(&mut r_i[..]).unwrap();
 
         // initiator.chaining_key = HASH(CONSTRUCTION)
         let mut chaining_key = INITIAL_CHAIN_KEY;
@@ -723,13 +732,18 @@ impl Handshake {
         let mut hash = INITIAL_CHAIN_HASH;
         hash = HASH!(hash, self.params.peer_static_public.as_bytes());
 
-        // initiator.ephemeral_private = DH_GENERATE()
-        // algo 1 rule 1: (eski,epki) <- DH.Gen()  (note: public counterpart derived later)
-        // algo 2 rule 1: (eski,epki) <- CPAKEM.Gen()  (saber keypair)
-        let (ephemeral_shared, ephemeral_private) = saber::keypair();
 
 /*
+        algo 2 rule 4:  (ct1, shk1) <- CCAKEM.Enc(spk[r], KDF[1](sigma[i], r[i]))
 
+        CCAKEM is the mceliece algo.
+        ct1 = ciphertext output
+        shk1 = shared key output
+        spk[r]= static pulbic key (of receiver/respondee)
+        KDF[1] = key derivation function (HKDF)
+        sigma[i] = "some long term secret sigma" - possibly private key of sender/initiator
+                   NOTE - NEEDS CONFIRMATION ^^ 
+        r[i] = r_i, "random coins".
 
 
 
