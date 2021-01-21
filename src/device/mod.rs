@@ -184,6 +184,7 @@ struct ThreadData<T: Tun> {
 
 impl<T: Tun, S: Sock> DeviceHandle<T, S> {
     pub fn new(name: &str, config: DeviceConfig) -> Result<DeviceHandle<T, S>, Error> {
+        println!("Devicehandle::new()");
         let n_threads = config.n_threads;
         let mut wg_interface = Device::<T, S>::new(name, config)?;
         wg_interface.open_listen_socket(0)?; // Start listening on a random port
@@ -413,6 +414,7 @@ impl<T: Tun, S: Sock> Device<T, S> {
     }
 
     fn open_listen_socket(&mut self, mut port: u16) -> Result<(), Error> {
+        println!("open_listen_socket()");
         // Binds the network facing interfaces
         // First close any existing open socket, and remove them from the event loop
         self.udp4.take().and_then(|s| unsafe {
@@ -442,6 +444,7 @@ impl<T: Tun, S: Sock> Device<T, S> {
 
         self.register_udp_handler(Arc::clone(&udp_sock4))?;
         self.register_udp_handler(Arc::clone(&udp_sock6))?;
+        println!("set udp4 to {:?}", udp_sock4);
         self.udp4 = Some(udp_sock4);
         self.udp6 = Some(udp_sock6);
 
@@ -762,8 +765,8 @@ impl<T: Tun, S: Sock> Device<T, S> {
                 // * Send encapsulated packet to the peer's endpoint
                 let mtu = d.mtu.load(Ordering::Relaxed);
 
-                let udp4 = d.udp4.as_ref().expect("Not connected");
-                let udp6 = d.udp6.as_ref().expect("Not connected");
+                let udp4 = d.udp4.as_ref().expect(&format!("Not connected: udp4 on interface {:?}", iface.name().unwrap_or("?".to_string())));
+                let udp6 = d.udp6.as_ref().expect(&format!("Not connected: udp6 on interface {:?}", iface.name().unwrap_or("?".to_string())));
 
                 let peers = &d.peers_by_ip;
                 for _ in 0..MAX_ITR {
