@@ -200,6 +200,7 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
             });
         }
 
+        println!("DeviceHandle OK");
         Ok(DeviceHandle {
             device: interface_lock,
             threads,
@@ -207,12 +208,14 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
     }
 
     pub fn wait(&mut self) {
+        println!("DeviceHandle wait");
         while let Some(thread) = self.threads.pop() {
             thread.join().unwrap();
         }
     }
 
     pub fn clean(&mut self) {
+        println!("DeviceHandle clean");
         for path in &self.device.read().cleanup_paths {
             // attempt to remove any file we created in the work dir
             let _ = std::fs::remove_file(&path);
@@ -220,6 +223,7 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
     }
 
     fn event_loop(_i: usize, device: &Lock<Device<T, S>>) {
+        println!("DeviceHandle event loop");
         #[cfg(target_os = "linux")]
         let mut thread_local = ThreadData {
             src_buf: [0u8; MAX_UDP_SIZE],
@@ -252,6 +256,7 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
             iface: Arc::clone(&device.read().iface),
         };
 
+        println!("DeviceHandle loop start");
         loop {
             // The event loop keeps a read lock on the device, because we assume write access is rarely needed
             let mut device_lock = device.read();
@@ -394,9 +399,13 @@ impl<T: Tun, S: Sock> Device<T, S> {
             rate_limiter: None,
         };
 
+        println!("calling regapihandler()");
         device.register_api_handler()?;
+        println!("calling regifacehandler()");
         device.register_iface_handler(Arc::clone(&device.iface))?;
+        println!("calling regnot");
         device.register_notifiers()?;
+        println!("calling regtims");
         device.register_timers()?;
 
         #[cfg(target_os = "macos")]
@@ -754,6 +763,7 @@ impl<T: Tun, S: Sock> Device<T, S> {
     }
 
     fn register_iface_handler(&self, iface: Arc<T>) -> Result<(), Error> {
+        println!("Reg iface handler");
         self.queue.new_event(
             iface.as_raw_fd(),
             Box::new(move |d, t| {
@@ -764,7 +774,12 @@ impl<T: Tun, S: Sock> Device<T, S> {
                 // * Encapsulate the packet for the given peer
                 // * Send encapsulated packet to the peer's endpoint
                 let mtu = d.mtu.load(Ordering::Relaxed);
-
+                /*
+                let (udp4, udp6) = match (d.udp4.as_ref(), d.udp6.as_ref()) {
+                    (Some(udp4), Some(udp6)) => (udp4, udp6),
+                    _ => return Action::Continue,
+                };
+                */
                 let udp4 = d.udp4.as_ref().expect(&format!("Not connected: udp4 on interface {:?}", iface.name().unwrap_or("?".to_string())));
                 let udp6 = d.udp6.as_ref().expect(&format!("Not connected: udp6 on interface {:?}", iface.name().unwrap_or("?".to_string())));
 
