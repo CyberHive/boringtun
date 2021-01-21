@@ -188,9 +188,11 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
         let n_threads = config.n_threads;
         let mut wg_interface = Device::<T, S>::new(name, config)?;
         match wg_interface.open_listen_socket(0) {
-            Ok(_) => {},
+            Ok(_) => {
+                println!("Listening socket for interface {} opened OK", name);
+            },
             Err(e) => {
-                eprintln!("Error opening socket on interface {}: {:?}", name, e);
+                println!("Error opening socket on interface {}: {:?}", name, e);
                 return Err(e);
             }
         }; // Start listening on a random port
@@ -206,7 +208,7 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
             });
         }
 
-        println!("DeviceHandle OK");
+        println!("DeviceHandle {} OK", name);
         Ok(DeviceHandle {
             device: interface_lock,
             threads,
@@ -449,7 +451,15 @@ impl<T: Tun, S: Sock> Device<T, S> {
 
         // Then open new sockets and bind to the port
         println!("Still opening listen socket... opening new sockets");
-        let udp_sock4 = Arc::new(S::new()?.set_non_blocking()?.set_reuse()?.bind(port)?);
+        let blocking_sock = S::new()?;
+        println!("Still opening listen socket... setting sock nonblocking");
+        let unreuse_sock = blocking_sock.set_non_blocking()?;
+        println!("Still opening listen socket... setting sock reuse");
+        let unbound_sock = unreuse_sock.set_reuse()?;
+        println!("Still opening listen socket... binding");
+        let sock = unbound_sock.bind(port)?;
+        println!("Still opening listen socket... keep ref counter");
+        let udp_sock4 = Arc::new(sock);
         println!("Still opening listen socket... udp4 sock opened");
         if port == 0 {
             // Random port was assigned
