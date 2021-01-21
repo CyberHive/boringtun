@@ -184,13 +184,13 @@ struct ThreadData<T: Tun> {
 
 impl<T: Tun, S: Sock> DeviceHandle<T, S> {
     pub fn new(name: &str, config: DeviceConfig) -> Result<DeviceHandle<T, S>, Error> {
-        println!("Devicehandle::new()");
+        println!("Devicehandle::new({})", name);
         let n_threads = config.n_threads;
         let mut wg_interface = Device::<T, S>::new(name, config)?;
         match wg_interface.open_listen_socket(0) {
             Ok(_) => {},
             Err(e) => {
-                eprintln!("Unexpected error opening socket on interface {}: {:?}", name, e);
+                eprintln!("Error opening socket on interface {}: {:?}", name, e);
                 return Err(e);
             }
         }; // Start listening on a random port
