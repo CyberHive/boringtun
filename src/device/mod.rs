@@ -444,7 +444,7 @@ impl<T: Tun, S: Sock> Device<T, S> {
 
         self.register_udp_handler(Arc::clone(&udp_sock4))?;
         self.register_udp_handler(Arc::clone(&udp_sock6))?;
-        println!("set udp4 to {:?}", udp_sock4);
+        println!("set udp4 to port {}", port);
         self.udp4 = Some(udp_sock4);
         self.udp6 = Some(udp_sock6);
 
