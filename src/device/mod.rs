@@ -187,7 +187,13 @@ impl<T: Tun, S: Sock> DeviceHandle<T, S> {
         println!("Devicehandle::new()");
         let n_threads = config.n_threads;
         let mut wg_interface = Device::<T, S>::new(name, config)?;
-        wg_interface.open_listen_socket(0)?; // Start listening on a random port
+        match wg_interface.open_listen_socket(0) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Unexpected error opening socket on interface {}: {:?}", name, e);
+                return Err(e);
+            }
+        }; // Start listening on a random port
 
         let interface_lock = Arc::new(Lock::new(wg_interface));
 
