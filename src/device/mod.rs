@@ -436,22 +436,25 @@ impl<T: Tun, S: Sock> Device<T, S> {
             self.queue.clear_event_by_fd(s.as_raw_fd());
             Some(())
         });
-
+        println!("Still opening... shutting down endpoints");
         for peer in self.peers.values() {
             peer.shutdown_endpoint();
         }
 
         // Then open new sockets and bind to the port
+        println!("Still opening listen socket... opening new sockets");
         let udp_sock4 = Arc::new(S::new()?.set_non_blocking()?.set_reuse()?.bind(port)?);
-
+        println!("Still opening listen socket... udp4 sock opened");
         if port == 0 {
             // Random port was assigned
             port = udp_sock4.port()?;
         }
-
+        println!("Still opening listen socket... got port");
         let udp_sock6 = Arc::new(S::new6()?.set_non_blocking()?.set_reuse()?.bind(port)?);
 
+        println!("Still opening listen socket... registering sock4 handler");
         self.register_udp_handler(Arc::clone(&udp_sock4))?;
+        println!("Still opening listen socket... registering sock6 handler");
         self.register_udp_handler(Arc::clone(&udp_sock6))?;
         println!("set udp4 to port {}", port);
         self.udp4 = Some(udp_sock4);
