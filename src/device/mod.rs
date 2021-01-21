@@ -457,7 +457,14 @@ impl<T: Tun, S: Sock> Device<T, S> {
         println!("Still opening listen socket... setting sock reuse");
         let unbound_sock = unreuse_sock.set_reuse()?;
         println!("Still opening listen socket... binding");
-        let sock = unbound_sock.bind(port)?;
+        let sock_r = unbound_sock.bind(port);
+        let sock = match sock_r {
+            Ok(s) => s,
+            Err(ref e) => {
+                println!("Cannot bind, {:?}", e);
+                sock_r.unwrap()
+            }
+        };
         println!("Still opening listen socket... keep ref counter");
         let udp_sock4 = Arc::new(sock);
         println!("Still opening listen socket... udp4 sock opened");
