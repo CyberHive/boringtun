@@ -25,7 +25,11 @@ struct SaberSecretKey {
 }
 use core::fmt::Display;
 use core::fmt::Formatter;
-// use pqcrypto_classicmceliece::mceliece8192128f::*;
+
+// Classic McEliece has the smallest ciphertext by far, weighing in at only 188 bytes
+// for the level-3 parameter set mceliece460896.
+
+// use pqcrypto_classicmceliece::mceliece460896::*;
 
 impl Display for SaberSecretKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -741,8 +745,11 @@ impl Handshake {
         shk1 = shared key output
         spk[r]= static pulbic key (of receiver/respondee)
         KDF[1] = key derivation function (HKDF)
-        sigma[i] = "some long term secret sigma" - possibly private key of sender/initiator
-                   NOTE - NEEDS CONFIRMATION ^^ 
+        sigma[i] = "some long term secret sigma"
+            This bears further explanation. r[i] would be sufficient but it being
+            pseudorandom is an attack vector.
+            Combining this with another secret from a different source
+            gets us closer to unpredictability.
         r[i] = r_i, "random coins".
 
 
