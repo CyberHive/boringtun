@@ -7,7 +7,9 @@
 
 #include "params.h"
 #include "mcbuf.h"
+// mrjb
 #define u8 unsigned char
+
 #define TWISTED_PRF_KEY_LEN 32
 
 void encrypt(unsigned char *s, const unsigned char *pk, unsigned char *e,

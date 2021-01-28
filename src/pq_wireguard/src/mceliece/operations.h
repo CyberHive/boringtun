@@ -4,7 +4,7 @@
 #include "mcbuf.h"
 #include "encrypt.h"
 #include <stddef.h>
-#include <stdint.h>
+#include <stdint.h>  /* mrjb */
 
 int crypto_kem_mceliece460896_avx_enc(
        unsigned char *c,
