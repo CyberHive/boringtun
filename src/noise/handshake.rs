@@ -762,7 +762,7 @@ assert!(ss1 == ss2);
 
 */
         oqs::init();
-        let _meceliece = kem::Kem::new(kem::Algorithm::ClassicMcEliece460896).expect("McEliece460896 unavailable");
+        let _mceliece = kem::Kem::new(kem::Algorithm::ClassicMcEliece460896).expect("McEliece460896 unavailable");
 
         // msg.message_type = 1   // algo 1 rule 8, "type"
         // msg.reserved_zero = { 0, 0, 0 }  // algo 1 rule 8, "0^3"
