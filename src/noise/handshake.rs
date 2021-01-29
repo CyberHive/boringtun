@@ -29,7 +29,7 @@ use core::fmt::Formatter;
 // Classic McEliece has the smallest ciphertext by far, weighing in at only 188 bytes
 // for the level-3 parameter set mceliece460896.
 
-// use pqcrypto_classicmceliece::mceliece460896::*;
+use pqcrypto_classicmceliece::mceliece460896::*;
 
 impl Display for SaberSecretKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
