@@ -92,6 +92,7 @@ name = "boringtun"
 version = "0.3.0"
 dependencies = [
  "base64",
+ "cc",
  "chrono",
  "clap",
  "daemonize",
@@ -99,6 +100,9 @@ dependencies = [
  "jni",
  "libc",
  "parking_lot",
+ "pqcrypto-classicmceliece",
+ "pqcrypto-saber",
+ "pqcrypto-traits",
  "ring",
  "slog",
  "slog-term",
@@ -125,9 +129,12 @@ checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "cc"
-version = "1.0.59"
+version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66120af515773fb005778dc07c261bd201ec8ce50bd6e7144c927753fe013381"
+checksum = "4c0496836a84f8d0495758516b8621a622beb77c0fed418570e50764093ced48"
+dependencies = [
+ "jobserver",
+]
 
 [[package]]
 name = "cesu8"
@@ -268,6 +275,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf91faf136cb47367fa430cd46e37a788775e7fa104f8b4bcb3861dc389b724"
 
 [[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -301,6 +314,15 @@ name = "jni-sys"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
+
+[[package]]
+name = "jobserver"
+version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c71313ebb9439f74b00d9d2dcec36440beaf57a6aa0623068441dd7cd81a7f2"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "js-sys"
@@ -410,6 +432,36 @@ dependencies = [
  "smallvec",
  "winapi",
 ]
+
+[[package]]
+name = "pqcrypto-classicmceliece"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0345ab6ce350e8c8e616ef02125730dd5ca1d387813febaf6e91d03ee13340a"
+dependencies = [
+ "cc",
+ "glob",
+ "libc",
+ "pqcrypto-traits",
+]
+
+[[package]]
+name = "pqcrypto-saber"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee6a61104f400a102a00d80469d466cb2637d7dc4b77023f5f90e9b6d8bef42f"
+dependencies = [
+ "cc",
+ "glob",
+ "libc",
+ "pqcrypto-traits",
+]
+
+[[package]]
+name = "pqcrypto-traits"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4e1563eff60a9ae869cacee0a33fa5c4ba27861fec6e3e23de95eb0ae805e4b"
 
 [[package]]
 name = "proc-macro2"
