@@ -6,7 +6,7 @@
 
 use super::{HandshakeInit, HandshakeResponse, PacketCookieReply};
 
-use pqcrypto_saber::saber;
+//use pqcrypto::kem::saber;
 
 use crate::crypto::blake2s::Blake2s;
 use crate::crypto::chacha20poly1305::ChaCha20Poly1305;
@@ -17,19 +17,18 @@ use crate::noise::session::Session;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use ring::rand::*;
-use pqcrypto_traits::kem::PublicKey;
+//use pqcrypto::traits::kem::PublicKey;
+use oqs::kem;
 
 struct SaberSecretKey {
-    shared: saber::PublicKey,
-    private: saber::SecretKey
+    shared: oqs::kem::PublicKey,
+    private: oqs::kem::SecretKey
 }
 use core::fmt::Display;
 use core::fmt::Formatter;
 
 // Classic McEliece has the smallest ciphertext by far, weighing in at only 188 bytes
 // for the level-3 parameter set mceliece460896.
-
-use pqcrypto_classicmceliece::mceliece460896::*;
 
 impl Display for SaberSecretKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -711,7 +710,9 @@ impl Handshake {
         // initiator.ephemeral_private = DH_GENERATE()
         // algo 1 rule 1: (eski,epki) <- DH.Gen()  (note: public counterpart derived later)
         // algo 2 rule 1: (eski,epki) <- CPAKEM.Gen()  (saber keypair)
-        let (ephemeral_shared, ephemeral_private) = saber::keypair();
+        oqs::init();
+        let saber = oqs::kem::Kem::new(oqs::kem::Algorithm::Saber).expect("Saber kem not found");
+        let (ephemeral_shared, ephemeral_private) = saber.keypair().expect("Could not generate Saber keypair");
 
         // message format descrived at wireguard.com/papers/wireguard.pdf section 5.4.2
         let (message_type, rest) = dst.split_at_mut(4);  // really 1 + 3
@@ -759,9 +760,9 @@ let (ss1, ct) = encapsulate(&pk);
 let ss2 = decapsulate(&ct, &sk);
 assert!(ss1 == ss2);
 
-
-
 */
+        oqs::init();
+        let _meceliece = kem::Kem::new(kem::Algorithm::ClassicMcEliece460896).expect("McEliece460896 unavailable");
 
         // msg.message_type = 1   // algo 1 rule 8, "type"
         // msg.reserved_zero = { 0, 0, 0 }  // algo 1 rule 8, "0^3"
@@ -771,7 +772,7 @@ assert!(ss1 == ss2);
         sender_index.copy_from_slice(&local_index.to_le_bytes());
 
         //msg.unencrypted_ephemeral = DH_PUBKEY(initiator.ephemeral_private)
-        unencrypted_ephemeral.copy_from_slice(&ephemeral_shared.as_bytes());
+        unencrypted_ephemeral.copy_from_slice(&ephemeral_shared.as_ref());  // .as_bytes()
         // initiator.hash = HASH(initiator.hash || msg.unencrypted_ephemeral)
         hash = HASH!(hash, unencrypted_ephemeral);  // this hash corresponds to H3 in algo 1
         // temp = HMAC(initiator.chaining_key, msg.unencrypted_ephemeral)
@@ -781,7 +782,7 @@ assert!(ss1 == ss2);
 
         // let ephemeral_shared = ephemeral_private.shared_key(&self.params.peer_static_public)?;
 
-        let temp = HMAC!(chaining_key, ephemeral_shared.as_bytes());
+        let temp = HMAC!(chaining_key, ephemeral_shared.as_ref()); // as_bytes());
         // initiator.chaining_key = HMAC(temp, 0x1)
         chaining_key = HMAC!(temp, [0x01]);
         // key = HMAC(temp, initiator.chaining_key || 0x2)

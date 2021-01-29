@@ -17,15 +17,15 @@ parking_lot = "0.10"
 slog = "2.5"
 slog-term = "2.5"
 
-# pqcrypto = { version = "0.12.2" }
-pqcrypto-traits = { version = "0.3.2" }
-pqcrypto-saber = { version = "0.1.5" }
-pqcrypto-classicmceliece = { version = "0.1.1" }
-
+# pqcrypto = { version = "0.12.2", default-features = false, features=["pqcrypto-saber",]}
+# ,"pqcrypto-classicmceliece"] }
 # pqcrypto didn't work because of duplicate definitions of the same libs.
 # so we're creating our own bindings by compiling parts of pq wireguard
 # C sources directly into our codebase.
-cc = "1.0.66"
+# cc = "1.0.66"
+
+oqs = { version = "0.3.0" }
+
 
 [build-dependencies]
 cc = "1.0"
